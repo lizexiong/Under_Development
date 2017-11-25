@@ -3,10 +3,10 @@ import sys
 
 import tornado.web
 
-from docker_auto.settings import COOKIE_NAME,template_variables
+from settings import COOKIE_NAME,template_variables
 
 sys.path.append("..")
-from docker_auto.model.user import UserSqlOperation
+from model.user import UserSqlOperation
 
 
 class BaseHandler(tornado.web.RequestHandler):

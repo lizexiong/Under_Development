@@ -7,11 +7,11 @@ import time
 import tornado.web
 
 from .base import BaseHandler
-from docker_auto.settings import template_variables
-from docker_auto.model.node import NodeInfo
-from ..myswarm import Myswarm
-from ..model.data_manage import DataManage
-from ..config import basejson
+from settings import template_variables
+from model.node import NodeInfo
+from myswarm import Myswarm
+from model.data_manage import DataManage
+from config import basejson
 
 class Main(BaseHandler):
 

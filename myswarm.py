@@ -6,7 +6,8 @@ import time
 import docker,errno
 from curl import Curl
 
-from docker_auto.model.node import NodeInfo
+from model.node import NodeInfo
+from settings import DOCKER_API_VERSION
 
 class Myswarm(object):
     #测试该端口是否开启
@@ -91,7 +92,7 @@ class Myswarm(object):
 
 
     def images_list(self, node_ip, node_port):
-        client_ins = docker.APIClient(base_url='tcp://' + node_ip + ':' + node_port, version='1.24', timeout=5)
+        client_ins = docker.APIClient(base_url='tcp://' + node_ip + ':' + node_port, version=DOCKER_API_VERSION, timeout=5)
         res_json = client_ins.images()
         images_list = []
         for i in res_json:
@@ -99,7 +100,7 @@ class Myswarm(object):
         return images_list
 
     def create_container(self, node_ip, node_port, conf):
-        client_ins = docker.APIClient(base_url='tcp://' + node_ip + ":" + node_port, version='1.24', timeout=5)
+        client_ins = docker.APIClient(base_url='tcp://' + node_ip + ":" + node_port, version=DOCKER_API_VERSION, timeout=5)
         print("      Create the container......")
         container_ret = client_ins.create_container(image=conf['Image'],
                                                     stdin_open=conf['OpenStdin'],
@@ -120,7 +121,7 @@ class Myswarm(object):
         if len(container_id) > 0:
             container_ip = ""
             try:
-                client_ins = docker.APIClient(base_url='tcp://' + node_ip + ":" + node_port, version='1.24', timeout=5)
+                client_ins = docker.APIClient(base_url='tcp://' + node_ip + ":" + node_port, version=DOCKER_API_VERSION, timeout=5)
                 client_ins.start(container_id)
             except  docker.errors.NotFound as e:
                 print ("container anomaly...")
@@ -166,7 +167,7 @@ class Myswarm(object):
         if len(container_id) > 0:
             print("      Stop the container %s ........" % container_id)
             client_ins = docker.APIClient(base_url='tcp://' + node_ip + ":"
-                                                + node_port, version='1.24', timeout=5)
+                                                + node_port, version=DOCKER_API_VERSION, timeout=5)
             client_ins.stop(container_id)
         else:
             print("Please enter the Container ID")
@@ -176,7 +177,7 @@ class Myswarm(object):
         if len(container_id) > 0:
             print("      Destroy the container %s ....... " % container_id)
             client_ins = docker.APIClient(base_url='tcp://' + node_ip + ':'
-                                                + node_port, version='1.24', timeout=5)
+                                                + node_port, version=DOCKER_API_VERSION, timeout=5)
             try:
                 client_ins.stop(container_id)
                 time.sleep(0.3)

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-from docker_auto.handler.user import Login,Logout
-from docker_auto.handler.node import Main,Top,LeftGroup,NodeManage,ConManage,GroupList,ConModify,RightNode, \
+from handler.user import Login,Logout
+from handler.node import Main,Top,LeftGroup,NodeManage,ConManage,GroupList,ConModify,RightNode, \
                                         ConCreate,ConAction,ConStart,ConStop,ConRestart,ConDestory,NodeAdd
 
 urls = [

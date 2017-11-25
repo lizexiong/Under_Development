@@ -4,7 +4,8 @@ import tornado.ioloop
 import tornado.web
 from tornado.options import define, options, parse_command_line
 
-from docker_auto.applications import application,PORT
+import sys
+from applications import application,PORT
 
 
 def start_application():

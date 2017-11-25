@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
-from docker_auto.handler.base import BaseHandler
-from docker_auto.model.check import Check
-from docker_auto.settings import COOKIE_NAME
+from handler.base import BaseHandler
+from model.check import Check
+from settings import COOKIE_NAME
 
 class Login(BaseHandler):
     def get(self,*args,**kwargs):
