@@ -272,3 +272,8 @@ class ConDestory(BaseHandler):
 
 
 
+class NodeAdd(BaseHandler):
+
+    @tornado.web.authenticated
+    def get(self,*args, **kwargs):
+        self.render("node/node_create.html")
