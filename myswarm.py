@@ -18,7 +18,7 @@ class Myswarm(object):
         try:
             cs.connect((address))
         except socket.error as e:
-            print ("ping_port",e)
+            print ("ping",ip,port,e)
             return 1
         cs.close()
         return 0
@@ -45,13 +45,16 @@ class Myswarm(object):
         return ret_json
 
     #取出这个节点下的所有容器信息
-    def container_list(self,node_ip,node_port):
-        print ("node_ip:",node_ip,"node_port:",node_port)
+    def container_list(self,node_ip,node_port,action=None):
+        action = action
+        # print ("node_ip:",node_ip,"node_port:",node_port)
         url = 'http://' + node_ip + ":" + node_port + "/containers/json?all=1"
         container_url = Curl(url)
         ret_json = container_url.get_value()
 
         con_data = {}
+        online_list = {}
+        offline_list = {}
         container_id = []       #存储容器id的前12位
         if ret_json:
             for i in ret_json:
@@ -62,7 +65,6 @@ class Myswarm(object):
         if len(container_id) < 1:
             return con_data
         else:
-            con_data = {}
             con_num = 1
             for con_id in container_id:
                 tmp_dict = {}
@@ -71,23 +73,48 @@ class Myswarm(object):
                     return con_data
                 con_state = ""
                 if ('Running' in ret_json['State'].keys()) and (
-                    'Status' not in ret_json['State'].keys()):  # for docker 1.7
+                        'Status' not in ret_json['State'].keys()):      # for docker 1.7
                     con_state = str(ret_json['State']['Running'])
-                elif 'Status' in ret_json['State'].keys():  # for docker 1.9 and higher
+                elif 'Status' in ret_json['State'].keys():              # for docker 1.9 and higher
                     con_state = str(ret_json['State']['Status'])
                 else:  # for else
                     con_state = "Exited"
-                tmp_dict['id_num'] = ret_json['Id'][0:12]
-                tmp_dict['con_ip'] = ret_json['NetworkSettings']['IPAddress']
-                tmp_dict['name'] = ret_json['Name']
-                tmp_dict['cpuperiod'] = ret_json['HostConfig']['CpuPeriod']
-                tmp_dict['cpuquota'] = ret_json['HostConfig']['CpuQuota']
-                tmp_dict['memory'] = ret_json['HostConfig']['Memory']
-                tmp_dict['state'] = con_state
-                tmp_dict['cmd'] = str(ret_json['Config']['Cmd'])
-                tmp_dict['created'] = ret_json['State']['StartedAt']
-                con_data[con_num] = tmp_dict
-                con_num += 1
+
+                if con_state == "running":
+                    tmp_dict['id_num'] = ret_json['Id'][0:12]
+                    tmp_dict['con_ip'] = ret_json['NetworkSettings']['IPAddress']
+                    tmp_dict['name'] = ret_json['Name']
+                    tmp_dict['cpuperiod'] = ret_json['HostConfig']['CpuPeriod']
+                    tmp_dict['cpuquota'] = ret_json['HostConfig']['CpuQuota']
+                    tmp_dict['memory'] = ret_json['HostConfig']['Memory']
+                    tmp_dict['state'] = con_state
+                    tmp_dict['cmd'] = str(ret_json['Config']['Cmd'])
+                    tmp_dict['created'] = ret_json['State']['StartedAt'].split('.')[0]
+                    online_list[con_num] = tmp_dict
+                    con_num += 1
+                else:
+                    tmp_dict['id_num'] = ret_json['Id'][0:12]
+                    tmp_dict['con_ip'] = ret_json['NetworkSettings']['IPAddress']
+                    tmp_dict['name'] = ret_json['Name']
+                    tmp_dict['cpuperiod'] = ret_json['HostConfig']['CpuPeriod']
+                    tmp_dict['cpuquota'] = ret_json['HostConfig']['CpuQuota']
+                    tmp_dict['memory'] = ret_json['HostConfig']['Memory']
+                    tmp_dict['state'] = con_state
+                    tmp_dict['cmd'] = str(ret_json['Config']['Cmd'])
+                    tmp_dict['created'] = ret_json['State']['StartedAt'].split('.')[0]
+                    offline_list[con_num] = tmp_dict
+                    con_num += 1
+
+            if action == 'online':
+                con_data = online_list
+            elif action == 'offline':
+                con_data = offline_list
+            else:
+                con_data = online_list.copy()
+                con_data.update(offline_list)
+
+        # print (con_data)
+
         return con_data
 
 
@@ -101,14 +128,26 @@ class Myswarm(object):
 
     def create_container(self, node_ip, node_port, conf):
         client_ins = docker.APIClient(base_url='tcp://' + node_ip + ":" + node_port, version=DOCKER_API_VERSION, timeout=5)
-        print("      Create the container......")
-        container_ret = client_ins.create_container(image=conf['Image'],
+
+        host_config=client_ins.create_host_config(port_bindings={
+                                            # con_id:server_id
+                                            8080: None,
+                                        3306: None
+                                            }),
+        # print ("host_config",host_config)
+        conf['HostConfig']['PortBindings'] = host_config[0]['PortBindings']
+
+        container_ret = client_ins.create_container(
+                                                    image=conf['Image'],
                                                     stdin_open=conf['OpenStdin'],
                                                     tty=conf['Tty'],
                                                     command=conf['Cmd'],
                                                     name=conf['Name'],
+                                                    #con_id
+                                                    ports = [8080,3306],
                                                     hostname=conf['Hostname'],
                                                     host_config=conf['HostConfig'])
+
         if container_ret:
             time.sleep(0.3)
             return (container_ret['Id'])
@@ -128,7 +167,7 @@ class Myswarm(object):
 
             time.sleep(0.5)
             con_info = self._container_detail(node_ip, node_port, container_id)
-            self.insert_con_usage(node_ip, con_info['NetworkSettings']['IPAddress'], container_id[0:12])
+            # self.insert_con_usage(node_ip, con_info['NetworkSettings']['IPAddress'], container_id[0:12])
         else:
             print("Please enter the Container ID")
             return
@@ -153,7 +192,7 @@ class Myswarm(object):
         tmp_dict['con_ip'] = ret_json['NetworkSettings']['IPAddress']
         tmp_dict['name'] = ret_json['Name']
         tmp_dict['image'] = ret_json['Image']
-        tmp_dict['created'] = ret_json['State']['StartedAt']
+        tmp_dict['created'] = ret_json['State']['StartedAt'].split('.')[0]
         tmp_dict['state'] = con_state
         tmp_dict['memory'] = ret_json['HostConfig']['Memory']
         tmp_dict['cpuperiod'] = ret_json['HostConfig']['CpuPeriod']
@@ -189,3 +228,6 @@ class Myswarm(object):
         else:
             print("Please enter the Container ID")
             return 1
+
+    def online_node_con_info(self,node_ip,node_port,con_id):
+        pass

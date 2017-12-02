@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 from handler.user import Login,Logout
 from handler.node import Main,Top,LeftGroup,NodeManage,ConManage,GroupList,ConModify,RightNode, \
-                                        ConCreate,ConAction,ConStart,ConStop,ConRestart,ConDestory,NodeAdd
+                                        ConCreate,ConAction,ConStart,ConStop,ConRestart,ConDestory,NodeAdd, \
+                                        NodeModify
 
 urls = [
     (r"/", Login),
@@ -22,6 +23,7 @@ urls = [
     (r'/constop',        ConStop),
     (r'/conrestart',      ConRestart),
     (r'/condestroy',      ConDestory),
-    (r'/nodeadd',           NodeAdd)
+    (r'/nodeadd',           NodeAdd),
+    (r'/nodemodify',        NodeModify),
 ]
 
