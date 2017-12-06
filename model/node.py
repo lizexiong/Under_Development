@@ -75,6 +75,15 @@ class NodeInfo(object):
         return 0
 
     @staticmethod
+    def update_con_status(con_id,state):
+        db = MysqlServer(DATABASES)
+        sql = "update con_usage set state = '%s' where  con_id = '%s'" %(state,con_id)
+        db.run_sql(sql)
+        db.close()
+
+
+
+    @staticmethod
     def delete_con_usage(con_id):
         db = MysqlServer(DATABASES)
         sql = "delete from con_usage where con_id='%s'" % con_id

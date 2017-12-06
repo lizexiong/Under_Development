@@ -90,13 +90,12 @@ class ConManage(BaseHandler):
 
     @tornado.web.authenticated
     def get(self, *args, **kwargs):
-
         #加载所有在线节点的所有容器信息并判断存储进入数据库
-        node_status_check = online_check()
-        node_status_check.trigger()
+        # node_status_check = online_check()
+        # node_status_check.trigger()
 
         online_node_list = NodeInfo.node_info('online')
-        print (online_node_list)
+        # print (online_node_list)
 
         if online_node_list:
             myswarm = Myswarm()
@@ -105,14 +104,14 @@ class ConManage(BaseHandler):
                 node_port = i[3]
                 action = None
                 ret = myswarm.container_list(node_ip,node_port,action)
+                print ("ret",ret)
             for i,j in ret.items():
                 id_num = ret[i]['id_num']
                 con_ip = ret[i]['con_ip']
                 state = ret[i]['state']
-                print (state)
                 con_info = NodeInfo.get_con_usage_modify(id_num)
                 if con_info: #如果不为空，代表数据库已经有这个数据,直接退出
-                    continue
+                    NodeInfo.update_con_status(id_num,state)
                 else:
                     NodeInfo.insert_con_usage(id_num,con_ip,node_ip,state)
 
@@ -133,10 +132,10 @@ class ConModify(BaseHandler):
     @tornado.web.authenticated
     def get(self, *args, **kwargs):
         con_id = self.get_argument('con_id')
-        print ('-----++++---',con_id)
+        # print ('-----++++---',con_id)
         con_data = NodeInfo.get_con_usage_modify(con_id)
         con_data_handled = DataManage.manage_con_usage_info(con_data)
-        print ('----++++++----',con_data_handled)
+        # print ('----++++++----',con_data_handled)
         self.render("node/con_modify.html", name=template_variables, single_con_usage_data = con_data_handled)
 
     @tornado.web.authenticated
@@ -184,6 +183,7 @@ class ConCreate(BaseHandler):
             node_port = NodeInfo.get_node_port(node_ip)[0][0]
             myswarm = Myswarm()
             images_data = myswarm.images_list(node_ip, node_port)
+            myswarm.check_volumes_from(node_ip,node_port)
         self.render('node/con_create.html',node_ip = node_ip, images = images_data)
 
     @tornado.web.authenticated
@@ -202,27 +202,62 @@ class ConCreate(BaseHandler):
 
         con_dict = {}
         tmp_dict = {'url':'node'}
-        for key in ['Cmd', 'Image', 'CpuPeriod', 'CpuQuota', 'CpuShares', 'Memory']:
+        for key in ['Cmd', 'Image', 'CpuPeriod', 'CpuQuota','ConNat', 'Name','Binds',]:
             con_dict[key] = self.get_argument(key.lower())
             if key == 'Cmd' and con_dict[key] != '':
                 json_ret [key] = con_dict[key].split()
             elif key == 'Image' and con_dict[key] != "":
                 json_ret[key] = con_dict[key]
+            elif key == 'Name' and con_dict[key] != "":
+                json_ret[key] = con_dict[key]
+            elif key == 'Name' and con_dict[key] == "":
+                import uuid
+                json_ret['Name'] = str(uuid.uuid4())[0:13]
+                json_ret['Hostname'] = json_ret['Name']
+            elif key == 'ConNat' and con_dict[key] != "":
+                port_list = list(con_dict[key].split(','))
+                port_list.append('')   #加一个空字符就是为怕没有空字符报错,所以加一个进去
+                while '' in port_list:
+                    port_list.remove('') #取出列表的空元素，因为,后面会分割出一个空字符串来
+                # print ('port_list',port_list)
+                for port in port_list:
+                    json_ret['Port'][port] = {}
+            elif key == 'Binds' and con_dict[key] != "":
+                volume_list = list(con_dict[key].split(','))
+                volume_list.append('')
+                while '' in volume_list:
+                    volume_list.remove('')
+                volume_dict = {}
+                try:
+                    for volume in volume_list:
+                        volume_split_list = volume.split(':')
+                        s_volume = volume_split_list[0]
+                        c_volume = volume_split_list[1]
+                        volume_dict[s_volume] = {'bind': c_volume,'mode':'ro'}
+                except Exception as e:
+                    print (e)
+
+                json_ret['Binds'] = volume_dict
             elif con_dict[key] != "":
                 json_ret['HostConfig'][key] = int(con_dict[key])
 
         myswarm = Myswarm()
-        import uuid
-        json_ret['Name'] = str(uuid.uuid4())[0:13]
+        # import uuid
+        # json_ret['Name'] = str(uuid.uuid4())[0:13]
         json_ret['Hostname'] = json_ret['Name']
         print (json_ret)
-        container_id = myswarm.create_container(node_ip, node_port, json_ret)
+        try:
+            container_id = myswarm.create_container(node_ip, node_port, json_ret)
+        except Exception as e:
+            print (e)
+            return
         if not container_id:
             tmp_dict['str'] = ('容器创建失败')
             ret_url = url_script.url_fail(argument = tmp_dict)
             print("Can not create the Container")
             self.write(ret_url)
         ret = myswarm.start_container(node_ip, node_port, container_id)
+        print ("start container",container_id)
         if not ret:
             tmp_dict['node_ip'] = node_ip
             tmp_dict['tag'] = True
@@ -243,25 +278,34 @@ class ConAction(BaseHandler):
             node_port = port_ret[0][0]
 
         myswarm = Myswarm()
-        con_data_handled = myswarm.container_info(node_ip, node_port, con_id)
-        print ("con_data_handled",con_data_handled)
+        try:
+            con_data_handled = myswarm.container_info(node_ip, node_port, con_id)
+        except BaseException as e:
+            NodeInfo.delete_con_usage(con_id)
+            tmp_dict = {'url':'conmanage'}
+            tmp_dict['str'] = "没有这个容器,等待获取最新信息..."
+            ret_url = url_script.url_fail(argument=tmp_dict)
+            self.write(ret_url)
+            return
+
+        # print ("con_data_handled",con_data_handled)
 
         '''
         在其它网页像此页面跳转时，如果数据库早已存在该数据,但是节点时候获取没有这个容器，
         那么就把这条数据从数据库里面删除.(此现象会发生在后台手动命令删除容器时)
         '''
-        tmp_con_id = []
-        for i,j in con_data_handled.items():
-            tmp_con_id.append(con_data_handled[i]['id_num'])
-        if con_id in tmp_con_id: #如果为空代表没有数据
-            pass
-            print ('is con_id')
-        else:
-            print ('not con_id')
-            NodeInfo.delete_con_usage(con_id)
-            tmp_dict = {'url':'conmanage'}
-            ret_url = url_script.url_succ(argument=tmp_dict)
-            self.write(ret_url)
+        # tmp_con_id = []
+        # for i,j in con_data_handled.items():
+        #     tmp_con_id.append(con_data_handled[i]['id_num'])
+        # if con_id in tmp_con_id:
+        #     pass
+        #     print ('is con_id')
+        # else:
+        #     print ('not con_id')
+        #     NodeInfo.delete_con_usage(con_id)
+        #     tmp_dict = {'url':'conmanage'}
+        #     ret_url = url_script.url_succ(argument=tmp_dict)
+        #     self.write(ret_url)
 
         self.render("node/con_action.html", name=template_variables, node_ip=node_ip,
             node_port=node_port, con_id=con_id, con_data=con_data_handled)

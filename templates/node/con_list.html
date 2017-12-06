@@ -2,6 +2,13 @@
 {% block div %}
 
 
+{#<script>#}
+{#    $(document).ready(function() {#}
+{##}
+{#        var index = layer.load(1, {shade: false});#}
+{#    });#}
+{#</script>#}
+
 <head>
     <ul>
         <h2>容器用途管理</h2>
@@ -63,6 +70,8 @@ $(document).ready(function() {
     $("#myModal").on("hidden.bs.modal", function() {
         $(this).removeData("bs.modal");
     });
+
+
 </script>
 
 {% end %}

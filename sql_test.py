@@ -19,17 +19,25 @@
 # test(test_dict=test_dict)
 
 
-import docker
-def create_container(self, node_ip, node_port, conf):
-    client_ins = docker.APIClient(base_url='tcp://' + node_ip + ":" + node_port, version='1.24', timeout=5)
-    print("      Create the container......")
-    container_ret = client_ins.create_container(image=conf['Image'],
-                                                stdin_open=conf['OpenStdin'],
-                                                tty=conf['Tty'],
-                                                command=conf['Cmd'],
-                                                name=conf['Name'],
-                                                hostname=conf['Hostname'],
-                                                host_config=conf['HostConfig'])
-    if container_ret:
-        time.sleep(0.3)
-        return (container_ret['Id'])
+# import docker
+# def create_container(self, node_ip, node_port, conf):
+#     client_ins = docker.APIClient(base_url='tcp://' + node_ip + ":" + node_port, version='1.24', timeout=5)
+#     print("      Create the container......")
+#     container_ret = client_ins.create_container(image=conf['Image'],
+#                                                 stdin_open=conf['OpenStdin'],
+#                                                 tty=conf['Tty'],
+#                                                 command=conf['Cmd'],
+#                                                 name=conf['Name'],
+#                                                 hostname=conf['Hostname'],
+#                                                 host_config=conf['HostConfig'])
+#     if container_ret:
+#         time.sleep(0.3)
+#         return (container_ret['Id'])
+
+from model.mysql_server1 import MysqlServer
+from settings import DATABASES
+
+obj = MysqlServer(DATABASES)
+l = obj.run_sql('select * from user')
+
+print (l)

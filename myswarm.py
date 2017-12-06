@@ -13,7 +13,7 @@ class Myswarm(object):
     #测试该端口是否开启
     def ping_port(self,ip,port):
         cs = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        cs.settimeout(0.3)
+        cs.settimeout(0.15)
         address = (str(ip),int(port))
         try:
             cs.connect((address))
@@ -129,13 +129,54 @@ class Myswarm(object):
     def create_container(self, node_ip, node_port, conf):
         client_ins = docker.APIClient(base_url='tcp://' + node_ip + ":" + node_port, version=DOCKER_API_VERSION, timeout=5)
 
-        host_config=client_ins.create_host_config(port_bindings={
-                                            # con_id:server_id
-                                            8080: None,
-                                        3306: None
-                                            }),
-        # print ("host_config",host_config)
+
+        port_list = [8080,8081,80,3306,3000,22,5672,]
+        if conf['Port']:  #检查port有没有值，一般为key，有key就是用户有自定义端口号输入
+            for i in conf['Port'].keys():
+                port_list.append(i)
+        port_dict = {}
+        for i in port_list:
+            port_dict[i] = None
+
+        #默认的卷挂载字典，如果用户没有输入，那么默认挂载tools卷到容器
+        volume_tmp_dict = {
+                        '/tools':{
+                        'bind':'/tools',
+                        'mode':'ro',
+                                  },
+                            }
+        if conf['Binds']:
+            volume_dict = dict(volume_tmp_dict,**conf['Binds'])
+        else:
+            volume_dict = volume_tmp_dict
+        print ("volume_dict",volume_dict)
+        volume_list = []  #存储卷配置的列表
+        for volume in volume_dict.keys():
+            volume_list.append(volume)
+
+        host_config=client_ins.create_host_config(port_bindings=port_dict,
+                                                  binds = volume_dict,
+                                                  volumes_from = ['test',],
+                                            # binds={
+                                            #     '/tools':{
+                                            #         'bind':'/ctools',
+                                            #         'mode':'ro',
+                                            #                },
+                                            #     '/test1':{
+                                            #         'bind':'/test1',
+                                            #         'mode':'ro',
+                                            #     }
+                                            # }
+                                            # con_id:server_id 以下是未优化前写法
+                                            # 8080: None,
+                                            # 8081:None,
+                                            ),
+        print ("host_config",host_config)
+        #把生成的配置文件加入到全局配置文件
         conf['HostConfig']['PortBindings'] = host_config[0]['PortBindings']
+        conf['HostConfig']['Binds'] = host_config[0]['Binds']
+        conf['HostConfig']['VolumesFrom'] = host_config[0]['VolumesFrom']
+
 
         container_ret = client_ins.create_container(
                                                     image=conf['Image'],
@@ -143,8 +184,10 @@ class Myswarm(object):
                                                     tty=conf['Tty'],
                                                     command=conf['Cmd'],
                                                     name=conf['Name'],
-                                                    #con_id
-                                                    ports = [8080,3306],
+                                                    ports = port_list,
+                                                    volumes= volume_list,
+                                                    #con_id 以下是未优化前写法
+                                                    # ports = [8080,8081,80,3306,3000,22,5672,11111],
                                                     hostname=conf['Hostname'],
                                                     host_config=conf['HostConfig'])
 
@@ -156,7 +199,7 @@ class Myswarm(object):
             return
 
     def start_container(self, node_ip, node_port, container_id):
-        print ("node_ip:",node_ip,"container_id:",container_id)
+        # print ("node_ip:",node_ip,"container_id:",container_id)
         if len(container_id) > 0:
             container_ip = ""
             try:
@@ -231,3 +274,7 @@ class Myswarm(object):
 
     def online_node_con_info(self,node_ip,node_port,con_id):
         pass
+
+    def check_volumes_from(self,node_ip,node_port):
+        containers = self.container_list(node_ip,node_port,all)
+        print (containers)
