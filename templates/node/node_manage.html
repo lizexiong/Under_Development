@@ -13,11 +13,18 @@ $(document).ready(function() {
     </ul>
 
     <div >
-        {% if is_admin == "1" %}
-        <input type="button" class="btn btn-default" onclick="javascript:window.location.href='/nodeadd'" value="新增">
-        {% end %}
-         <a href="/nodemanage?action=online"> <input type="button" class="btn btn-default"  value="在线节点"></a>
-        <a href="/nodemanage?action=offline"> <input type="button" class="btn btn-default"  value="离线节点"></a>
+        <div style="float:left;">
+            {% if is_admin == "1" %}
+            <input type="button" class="btn btn-default" onclick="javascript:window.location.href='/nodeadd'" value="新增">
+            {% end %}
+             <a href="/nodemanage?action=online"> <input type="button" class="btn btn-default"  value="在线节点"></a>
+            <a href="/nodemanage?action=offline"> <input type="button" class="btn btn-default"  value="离线节点"></a>
+        </div>
+        <div style="text-align:right;" >
+            <button  id='refresh' type="button" class="btn btn-primary" data-toggle="button" aria-pressed="false" autocomplete="off" >
+                    刷新
+            </button>
+        </div>
     </div>
 
 
@@ -92,6 +99,13 @@ $(document).ready(function() {
     $("#myModal").on("hidden.bs.modal", function() {
         $(this).removeData("bs.modal");
     });
+
+    $(function(){
+        $('refresh').click(function(){
+            var node_ip =
+        })
+    })
 </script>
+
 
 {% end %}

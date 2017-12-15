@@ -183,8 +183,8 @@ class ConCreate(BaseHandler):
             node_port = NodeInfo.get_node_port(node_ip)[0][0]
             myswarm = Myswarm()
             images_data = myswarm.images_list(node_ip, node_port)
-            myswarm.check_volumes_from(node_ip,node_port)
-        self.render('node/con_create.html',node_ip = node_ip, images = images_data)
+            mount_con_list = myswarm.check_volumes_from(node_ip,node_port)
+        self.render('node/con_create.html',node_ip = node_ip, images = images_data,mounts=mount_con_list)
 
     @tornado.web.authenticated
     def post(self, *args, **kwargs):
@@ -202,7 +202,7 @@ class ConCreate(BaseHandler):
 
         con_dict = {}
         tmp_dict = {'url':'node'}
-        for key in ['Cmd', 'Image', 'CpuPeriod', 'CpuQuota','ConNat', 'Name','Binds',]:
+        for key in ['Cmd', 'Image', 'CpuPeriod', 'CpuQuota','ConNat', 'Name','Binds','Mounts']:
             con_dict[key] = self.get_argument(key.lower())
             if key == 'Cmd' and con_dict[key] != '':
                 json_ret [key] = con_dict[key].split()
@@ -236,8 +236,9 @@ class ConCreate(BaseHandler):
                         volume_dict[s_volume] = {'bind': c_volume,'mode':'ro'}
                 except Exception as e:
                     print (e)
-
                 json_ret['Binds'] = volume_dict
+            elif key == 'Mounts' and con_dict[key] != "":
+                json_ret['Mounts'] = con_dict[key]
             elif con_dict[key] != "":
                 json_ret['HostConfig'][key] = int(con_dict[key])
 
@@ -248,16 +249,26 @@ class ConCreate(BaseHandler):
         print (json_ret)
         try:
             container_id = myswarm.create_container(node_ip, node_port, json_ret)
-        except Exception as e:
-            print (e)
+        except Exception as e :
+            tmp_dict['str'] = ('容器名已存在或端口等参数输入不合法..')
+            tmp_dict['node_ip'] = node_ip
+            ret_url = url_script.url_fail(argument = tmp_dict)
+            self.write(ret_url)
             return
+
         if not container_id:
             tmp_dict['str'] = ('容器创建失败')
             ret_url = url_script.url_fail(argument = tmp_dict)
             print("Can not create the Container")
             self.write(ret_url)
-        ret = myswarm.start_container(node_ip, node_port, container_id)
-        print ("start container",container_id)
+        try:
+            ret = myswarm.start_container(node_ip, node_port, container_id)
+        except Exception as e:
+            tmp_dict['str'] = ('容器端口号可能已占用,无法启动...')
+            tmp_dict['node_ip'] = node_ip
+            ret_url = url_script.url_fail(argument = tmp_dict)
+            self.write(ret_url)
+            return
         if not ret:
             tmp_dict['node_ip'] = node_ip
             tmp_dict['tag'] = True
@@ -280,6 +291,7 @@ class ConAction(BaseHandler):
         myswarm = Myswarm()
         try:
             con_data_handled = myswarm.container_info(node_ip, node_port, con_id)
+            show_port = myswarm.show_port(node_ip,node_port,con_id)
         except BaseException as e:
             NodeInfo.delete_con_usage(con_id)
             tmp_dict = {'url':'conmanage'}
@@ -308,7 +320,7 @@ class ConAction(BaseHandler):
         #     self.write(ret_url)
 
         self.render("node/con_action.html", name=template_variables, node_ip=node_ip,
-            node_port=node_port, con_id=con_id, con_data=con_data_handled)
+            node_port=node_port, con_id=con_id, con_data=con_data_handled,show_port = show_port)
 
 class ConStart(BaseHandler):
 
@@ -553,7 +565,13 @@ class url_script(object):
 
     @staticmethod
     def url_fail(*args, **kwargs):
-        url_cmd =   ("<script language='javascript'>alert('" + kwargs['argument']['str'] + "')"
-                    ";window.location.href='/" + kwargs['argument']['url'] +"';</script>")
+        node_ip = kwargs['argument'].get('node_ip',None)
+        print (node_ip)
+        if node_ip:
+            url_cmd =   ("<script language='javascript'>alert('" + kwargs['argument']['str'] + "')"
+                        ";window.location.href='/" + kwargs['argument']['url'] + "?node_ip=" + node_ip +"';</script>")
+        else:
+            url_cmd =   ("<script language='javascript'>alert('" + kwargs['argument']['str'] + "')"
+                        ";window.location.href='/" + kwargs['argument']['url'] +"';</script>")
         return url_cmd
 

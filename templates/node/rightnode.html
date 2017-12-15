@@ -32,7 +32,7 @@ $(document).ready(function() {
 {#            <th >内存</th>#}
             <th >状态</th>
             <th >运行命令</th>
-            <th >创建时间</th>
+            <th >启动时间</th>
             <th >操作</th>
         </tr>
     </thead>
@@ -48,7 +48,7 @@ $(document).ready(function() {
 {#            <td>{{con_data[con]["memory"]}}</td>#}
             <td>{{con_data[con]["state"]}}</td>
             <td>{{con_data[con]["cmd"]}}</td>
-            <td>{{con_data[con]["created"]}}</td>
+            <td>{{con_data[con]["started"]}}</td>
             <td>
                 <input type="button" class="btn btn-default" onclick="javascript:window.location.href='/conaction?node_ip={{node_ip}}&con_id={{con_data[con]["id_num"]}}'" value="操作"> 
             </td>
