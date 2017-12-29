@@ -2,7 +2,10 @@
 from handler.user import Login,Logout
 from handler.node import Main,Top,LeftGroup,NodeManage,ConManage,GroupList,ConModify,RightNode, \
                                         ConCreate,ConAction,ConStart,ConStop,ConRestart,ConDestory,NodeAdd, \
-                                        NodeModify
+                                        NodeModify,GroupGraph
+# from handler.node_ajax import pag
+
+from handler.node_ajax import NodeManageHostStatus
 
 urls = [
     (r"/", Login),
@@ -12,6 +15,7 @@ urls = [
     (r"/base",          Top),
     (r"/leftgroup",     LeftGroup),
     (r"/nodemanage", NodeManage),
+    #(r"/nodemanage/(?P<page>\d*)", NodeManage),
     (r"/conmanage",     ConManage),
     # (r"/rightgroup",    RightGroup),
     (r"/grouplist",     GroupList),
@@ -25,5 +29,8 @@ urls = [
     (r'/condestroy',      ConDestory),
     (r'/nodeadd',           NodeAdd),
     (r'/nodemodify',        NodeModify),
+    (r'/nodemanagehoststatus',NodeManageHostStatus),
+    (r'/groupgraph',GroupGraph)
+    # (r'/pag',pag),
 ]
 
